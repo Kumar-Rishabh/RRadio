@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:radio/models/radio.dart';
 import 'package:radio/utils/radio_utils.dart';
 import 'package:velocity_x/velocity_x.dart';
+import 'package:alan_voice/alan_voice.dart';
 
 
 class HomePage extends StatefulWidget {
@@ -23,6 +24,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     fetchRadios();
+    setupAlan();
     _audioPlayer.onPlayerStateChanged.listen((event) {
       if (event == AudioPlayerState.PLAYING) {
         _isplaying = true;
@@ -31,6 +33,54 @@ class _HomePageState extends State<HomePage> {
       }
       setState(() {});
     });
+  }
+  setupAlan(){
+    AlanVoice.addButton("Add your alan api key",
+        buttonAlign: AlanVoice.BUTTON_ALIGN_RIGHT);
+    AlanVoice.callbacks.add((command)=> handleCommand(command.data));
+  }
+  
+  handleCommand(Map<String, dynamic> response){
+    switch(response['command']){
+      case "play":
+        _playMusic(_selectedRadio.url);
+        break;
+      case "stop":
+        _audioPlayer.stop();
+        break;
+      case "next":
+        final index=_selectedRadio.id;
+        MyRadio newradio;
+        if(index+1>radios.length){
+          newradio=radios.firstWhere((element) => element.id==1);
+          radios.remove(newradio);
+          radios.insert(0, newradio);
+        }
+        else{
+          newradio=radios.firstWhere((element) => element.id==index+1);
+          radios.remove(newradio);
+          radios.insert(0, newradio);
+        }
+        _playMusic(newradio.url);
+        break;
+      case "next":
+        final index=_selectedRadio.id;
+        MyRadio newradio;
+        if(index-1<=0){
+          newradio=radios.firstWhere((element) => element.id==1);
+          radios.remove(newradio);
+          radios.insert(0, newradio);
+        }
+        else{
+          newradio=radios.firstWhere((element) => element.id==index-1);
+          radios.remove(newradio);
+          radios.insert(0, newradio);
+        }
+        _playMusic(newradio.url);
+        break;
+      default:
+        print("command was${response['command']}");
+    }
   }
   fetchRadios() async {
     final radioJson = await rootBundle.loadString("assets/radio.json");
