@@ -34,16 +34,32 @@ class _HomePageState extends State<HomePage> {
       setState(() {});
     });
   }
+  fetchRadios() async {
+    final radioJson = await rootBundle.loadString("assets/radio.json");
+    radios = MyRadioList.fromJson(radioJson).radios;
+    _selectedRadio=radios[0];
+    _selectedColor=Color(int.tryParse(_selectedRadio.color));
+    setState(() {});
+  }
+
   setupAlan(){
-    AlanVoice.addButton("Add your alan api key",
+    AlanVoice.addButton("18c4d0c70249f4b80a129471a6866cba2e956eca572e1d8b807a3e2338fdd0dc/stage",
         buttonAlign: AlanVoice.BUTTON_ALIGN_RIGHT);
     AlanVoice.callbacks.add((command)=> handleCommand(command.data));
   }
-  
+
   handleCommand(Map<String, dynamic> response){
     switch(response['command']){
       case "play":
         _playMusic(_selectedRadio.url);
+        break;
+      case "play_channel":
+        final id=response["id"];
+        _audioPlayer.pause();
+        MyRadio newradio=radios.firstWhere((element) => element.id==id);
+        radios.remove(newradio);
+        radios.insert(0, newradio);
+        _playMusic(newradio.url);
         break;
       case "stop":
         _audioPlayer.stop();
@@ -63,7 +79,7 @@ class _HomePageState extends State<HomePage> {
         }
         _playMusic(newradio.url);
         break;
-      case "next":
+      case "prev":
         final index=_selectedRadio.id;
         MyRadio newradio;
         if(index-1<=0){
@@ -82,11 +98,7 @@ class _HomePageState extends State<HomePage> {
         print("command was${response['command']}");
     }
   }
-  fetchRadios() async {
-    final radioJson = await rootBundle.loadString("assets/radio.json");
-    radios = MyRadioList.fromJson(radioJson).radios;
-    setState(() {});
-  }
+
 
   _playMusic(String url){
     _audioPlayer.play(url);
@@ -100,7 +112,41 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: Drawer(),
+      drawer: Drawer(
+        child: Container(
+            color: _selectedColor ?? AIColors.primaryColor2,
+            child: radios != null?
+            VStack(
+                [
+                  SizedBox(
+                    height: 100.0,
+                  ),
+                    Text("All Channels",style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 30.0,
+                    ),),
+                  SizedBox(
+                    height: 20.0,
+                  ),
+                    Expanded(child: ListView(
+                      padding: Vx.m0,
+                      shrinkWrap: true,
+                      children: radios
+                          .map((e) => ListTile(
+                        leading: CircleAvatar(
+                          backgroundImage: NetworkImage(e.icon),
+                        ),
+                        title: "${e.name} FM".text.white.make(),
+                        subtitle: e.tagline.text.white.make(),
+                      ))
+                          .toList(),
+                    ),
+                    ),
+                ],
+              crossAlignment: CrossAxisAlignment.start,
+            ):const Offstage(),
+        ),
+      ),
       body: Stack(
         children: [
           VxAnimatedBox()
@@ -116,7 +162,7 @@ class _HomePageState extends State<HomePage> {
             ),
           )
               .make(),
-          AppBar(
+          [AppBar(
             title: "RRadio".text.xl4.bold.white.make().shimmer(
                 primaryColor: Vx.purple300,
               secondaryColor: Vx.white,
@@ -125,6 +171,8 @@ class _HomePageState extends State<HomePage> {
             elevation: 0,
             centerTitle: true,
           ).h(100).p16(),
+         "Say Hey Alan".text.italic.white.semiBold.make(),
+         10.heightBox,].vStack(),
           
          radios!=null? VxSwiper.builder(
             aspectRatio: 1.0,
